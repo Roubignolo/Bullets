@@ -1,7 +1,5 @@
 local Patterns = {}
 
-local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
-
 local function spawn(bullets, x, y, angle, speed)
     table.insert(bullets, {
         x = x, y = y,
@@ -12,149 +10,108 @@ local function spawn(bullets, x, y, angle, speed)
     })
 end
 
------------------------------------------------------------------ Spiral
-local spiral = {
-    name = "Spiral",
-    params = { rate = 30, speed = 180, arms = 3, rotSpeed = 1.5 },
-    accum = 0,
-}
-function spiral.reset() spiral.accum = 0 end
-function spiral.update(dt, time, emitter, bullets)
-    spiral.accum = spiral.accum + dt
-    local interval = 1 / spiral.params.rate
-    while spiral.accum >= interval do
-        spiral.accum = spiral.accum - interval
-        for k = 0, spiral.params.arms - 1 do
-            local a = time * spiral.params.rotSpeed + (k * math.pi * 2 / spiral.params.arms)
-            spawn(bullets, emitter.x, emitter.y, a, spiral.params.speed)
-        end
-    end
-end
-function spiral.keypressed(key)
-    local p = spiral.params
-    if key == "q" then p.rate = clamp(p.rate - 5, 1, 200) end
-    if key == "e" then p.rate = clamp(p.rate + 5, 1, 200) end
-    if key == "z" then p.speed = clamp(p.speed - 20, 20, 800) end
-    if key == "c" then p.speed = clamp(p.speed + 20, 20, 800) end
-    if key == "[" then p.arms = clamp(p.arms - 1, 1, 16) end
-    if key == "]" then p.arms = clamp(p.arms + 1, 1, 16) end
-    if key == "," then p.rotSpeed = p.rotSpeed - 0.2 end
-    if key == "." then p.rotSpeed = p.rotSpeed + 0.2 end
-end
-function spiral.describe()
-    local p = spiral.params
-    return string.format("rate=%d/s  speed=%d  arms=%d  rot=%.1f rad/s", p.rate, p.speed, p.arms, p.rotSpeed)
-end
+Patterns.blueprints = {
 
------------------------------------------------------------------ Ring
-local ring = {
-    name = "Ring",
-    params = { interval = 1.0, count = 24, speed = 200 },
-    accum = 0,
-}
-function ring.reset() ring.accum = 0 end
-function ring.update(dt, time, emitter, bullets)
-    ring.accum = ring.accum + dt
-    if ring.accum >= ring.params.interval then
-        ring.accum = ring.accum - ring.params.interval
-        for k = 0, ring.params.count - 1 do
-            local a = (k / ring.params.count) * math.pi * 2
-            spawn(bullets, emitter.x, emitter.y, a, ring.params.speed)
-        end
-    end
-end
-function ring.keypressed(key)
-    local p = ring.params
-    if key == "q" then p.interval = clamp(p.interval - 0.1, 0.1, 5) end
-    if key == "e" then p.interval = clamp(p.interval + 0.1, 0.1, 5) end
-    if key == "z" then p.speed = clamp(p.speed - 20, 20, 800) end
-    if key == "c" then p.speed = clamp(p.speed + 20, 20, 800) end
-    if key == "[" then p.count = clamp(p.count - 2, 2, 64) end
-    if key == "]" then p.count = clamp(p.count + 2, 2, 64) end
-end
-function ring.describe()
-    local p = ring.params
-    return string.format("interval=%.1fs  count=%d  speed=%d", p.interval, p.count, p.speed)
-end
+    {
+        name = "Spiral",
+        defaultParams = { rate = 30, speed = 180, arms = 3, rotSpeed = 1.5 },
+        paramSpecs = {
+            { name = "rate",     min = 1,   max = 200, step = 1,   label = "Rate (b/s)" },
+            { name = "speed",    min = 20,  max = 800, step = 5,   label = "Speed (px/s)" },
+            { name = "arms",     min = 1,   max = 16,  step = 1,   label = "Arms" },
+            { name = "rotSpeed", min = -5,  max = 5,   step = 0.1, label = "Rotation (rad/s)" },
+        },
+        update = function(em, dt, time, bullets, target)
+            em.accum = em.accum + dt
+            local p = em.params
+            local interval = 1 / p.rate
+            while em.accum >= interval do
+                em.accum = em.accum - interval
+                for k = 0, p.arms - 1 do
+                    local a = time * p.rotSpeed + (k * math.pi * 2 / p.arms)
+                    spawn(bullets, em.x, em.y, a, p.speed)
+                end
+            end
+        end,
+    },
 
------------------------------------------------------------------ Fan oscillant
-local fan = {
-    name = "Fan oscillant",
-    params = { rate = 25, speed = 220, spread = 1.0, count = 5, sway = 0.6 },
-    accum = 0,
-}
-function fan.reset() fan.accum = 0 end
-function fan.update(dt, time, emitter, bullets)
-    fan.accum = fan.accum + dt
-    local interval = 1 / fan.params.rate
-    while fan.accum >= interval do
-        fan.accum = fan.accum - interval
-        local center = math.pi / 2 + math.sin(time * 1.5) * fan.params.sway
-        local n = fan.params.count
-        for k = 0, n - 1 do
-            local t = (n == 1) and 0.5 or (k / (n - 1))
-            local a = center + (t - 0.5) * fan.params.spread
-            spawn(bullets, emitter.x, emitter.y, a, fan.params.speed)
-        end
-    end
-end
-function fan.keypressed(key)
-    local p = fan.params
-    if key == "q" then p.rate = clamp(p.rate - 5, 1, 200) end
-    if key == "e" then p.rate = clamp(p.rate + 5, 1, 200) end
-    if key == "z" then p.speed = clamp(p.speed - 20, 20, 800) end
-    if key == "c" then p.speed = clamp(p.speed + 20, 20, 800) end
-    if key == "[" then p.count = clamp(p.count - 1, 1, 16) end
-    if key == "]" then p.count = clamp(p.count + 1, 1, 16) end
-    if key == "," then p.spread = clamp(p.spread - 0.1, 0.1, math.pi) end
-    if key == "." then p.spread = clamp(p.spread + 0.1, 0.1, math.pi) end
-end
-function fan.describe()
-    local p = fan.params
-    return string.format("rate=%d/s  speed=%d  count=%d  spread=%.1f rad", p.rate, p.speed, p.count, p.spread)
-end
+    {
+        name = "Ring",
+        defaultParams = { interval = 1.0, count = 24, speed = 200, baseAngle = 0 },
+        paramSpecs = {
+            { name = "interval",  min = 0.1, max = 5,         step = 0.1,  label = "Interval (s)" },
+            { name = "count",     min = 2,   max = 64,        step = 1,    label = "Count" },
+            { name = "speed",     min = 20,  max = 800,       step = 5,    label = "Speed (px/s)" },
+            { name = "baseAngle", min = 0,   max = math.pi*2, step = 0.05, label = "Phase (rad)" },
+        },
+        update = function(em, dt, time, bullets, target)
+            em.accum = em.accum + dt
+            local p = em.params
+            if em.accum >= p.interval then
+                em.accum = em.accum - p.interval
+                for k = 0, p.count - 1 do
+                    local a = p.baseAngle + (k / p.count) * math.pi * 2
+                    spawn(bullets, em.x, em.y, a, p.speed)
+                end
+            end
+        end,
+    },
 
------------------------------------------------------------------ Aimed (vise le joueur)
-local aimed = {
-    name = "Aimed",
-    params = { rate = 8, speed = 240, spread = 0.3, count = 3 },
-    accum = 0,
-}
-function aimed.reset() aimed.accum = 0 end
-function aimed.update(dt, time, emitter, bullets)
-    aimed.accum = aimed.accum + dt
-    local interval = 1 / aimed.params.rate
-    while aimed.accum >= interval do
-        aimed.accum = aimed.accum - interval
-        local target = emitter.target
-        if not target then return end
-        local center = math.atan2(target.y - emitter.y, target.x - emitter.x)
-        local n = aimed.params.count
-        for k = 0, n - 1 do
-            local t = (n == 1) and 0.5 or (k / (n - 1))
-            local a = center + (t - 0.5) * aimed.params.spread
-            spawn(bullets, emitter.x, emitter.y, a, aimed.params.speed)
-        end
-    end
-end
-function aimed.keypressed(key)
-    local p = aimed.params
-    if key == "q" then p.rate = clamp(p.rate - 1, 1, 60) end
-    if key == "e" then p.rate = clamp(p.rate + 1, 1, 60) end
-    if key == "z" then p.speed = clamp(p.speed - 20, 20, 800) end
-    if key == "c" then p.speed = clamp(p.speed + 20, 20, 800) end
-    if key == "[" then p.count = clamp(p.count - 1, 1, 8) end
-    if key == "]" then p.count = clamp(p.count + 1, 1, 8) end
-    if key == "," then p.spread = clamp(p.spread - 0.05, 0, math.pi / 2) end
-    if key == "." then p.spread = clamp(p.spread + 0.05, 0, math.pi / 2) end
-end
-function aimed.describe()
-    local p = aimed.params
-    return string.format("rate=%d/s  speed=%d  count=%d  spread=%.2f rad", p.rate, p.speed, p.count, p.spread)
-end
+    {
+        name = "Fan oscillant",
+        defaultParams = { rate = 25, speed = 220, count = 5, spread = 1.0, sway = 0.6, swaySpeed = 1.5, baseAngle = math.pi / 2 },
+        paramSpecs = {
+            { name = "rate",      min = 1,    max = 200,        step = 1,    label = "Rate (b/s)" },
+            { name = "speed",     min = 20,   max = 800,        step = 5,    label = "Speed (px/s)" },
+            { name = "count",     min = 1,    max = 16,         step = 1,    label = "Count" },
+            { name = "spread",    min = 0.05, max = math.pi,    step = 0.05, label = "Spread (rad)" },
+            { name = "sway",      min = 0,    max = 2,          step = 0.05, label = "Sway amplitude" },
+            { name = "swaySpeed", min = 0,    max = 5,          step = 0.1,  label = "Sway speed" },
+            { name = "baseAngle", min = 0,    max = math.pi*2,  step = 0.05, label = "Base angle (rad)" },
+        },
+        update = function(em, dt, time, bullets, target)
+            em.accum = em.accum + dt
+            local p = em.params
+            local interval = 1 / p.rate
+            while em.accum >= interval do
+                em.accum = em.accum - interval
+                local center = p.baseAngle + math.sin(time * p.swaySpeed) * p.sway
+                local n = p.count
+                for k = 0, n - 1 do
+                    local t = (n == 1) and 0.5 or (k / (n - 1))
+                    local a = center + (t - 0.5) * p.spread
+                    spawn(bullets, em.x, em.y, a, p.speed)
+                end
+            end
+        end,
+    },
 
-function Patterns.list()
-    return { spiral, ring, fan, aimed }
-end
+    {
+        name = "Aimed",
+        defaultParams = { rate = 8, speed = 240, count = 3, spread = 0.3 },
+        paramSpecs = {
+            { name = "rate",   min = 1,   max = 60,         step = 1,    label = "Rate (b/s)" },
+            { name = "speed",  min = 20,  max = 800,        step = 5,    label = "Speed (px/s)" },
+            { name = "count",  min = 1,   max = 8,          step = 1,    label = "Count" },
+            { name = "spread", min = 0,   max = math.pi/2,  step = 0.05, label = "Spread (rad)" },
+        },
+        update = function(em, dt, time, bullets, target)
+            em.accum = em.accum + dt
+            local p = em.params
+            local interval = 1 / p.rate
+            while em.accum >= interval do
+                em.accum = em.accum - interval
+                if not target then return end
+                local center = math.atan2(target.y - em.y, target.x - em.x)
+                local n = p.count
+                for k = 0, n - 1 do
+                    local t = (n == 1) and 0.5 or (k / (n - 1))
+                    local a = center + (t - 0.5) * p.spread
+                    spawn(bullets, em.x, em.y, a, p.speed)
+                end
+            end
+        end,
+    },
+}
 
 return Patterns

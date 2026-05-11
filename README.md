@@ -2,7 +2,9 @@
 
 Editeur de patterns de bullets pour shmups, en Lua / LÖVE 2D.
 
-Permet de creer de nouveaux patterns et de les tester en temps reel avec un petit vaisseau deplaçable, jouable directement en ligne via love.js.
+Place autant d'emitters que tu veux dans la zone de jeu, edite leurs parametres en temps reel via des sliders, et teste tes patterns avec un petit vaisseau pilotable. Compteurs de hits / grazes pour mesurer la difficulte.
+
+Portage navigateur prevu via love.js (voir [web/README.md](web/README.md)).
 
 ## Lancer en local
 
@@ -12,42 +14,83 @@ Requiert [LÖVE 2D 11.5](https://love2d.org/) installe.
 love .
 ```
 
-## Build web
+## Utilisation
 
-Voir [web/README.md](web/README.md) pour le portage navigateur via love.js.
+Fenetre = zone de jeu (gauche) + panneau d'edition (droite).
 
-## Controles
+### Panneau
 
-| Action | Touches |
-|---|---|
-| Deplacement | fleches ou WASD |
-| Focus / precision | Shift |
-| Changer de pattern | `1` `2` `3` `4` |
-| Reset simulation | `R` |
+- **PATTERNS** : un clic sur `+ Spiral`, `+ Ring`, etc. ajoute un emitter au centre de la zone.
+- **EMITTERS** : liste des emitters poses. Clic pour selectionner (highlight bleu autour). Bouton `x` rouge pour supprimer un emitter, `Tout supprimer` pour vider.
+- **PARAMETRES** : sliders pour l'emitter selectionne (rate, speed, count, spread, etc., variables selon le pattern). `Reinitialiser les parametres` restaure les defaults du pattern.
+- **Bas** : Pause / Reset stats, et compteurs Bullets / Hits / Grazes.
+
+### Zone de jeu
+
+- **Drag** : clic-glisser un emitter pour le deplacer dans la zone.
+- **Clic** sur un emitter : le selectionne (le panneau affiche ses parametres).
+- Le **vaisseau** se deplace avec les fleches ou WASD. Shift = focus mode (vitesse / 2.5, comme dans tout shmup).
+- **Hit zone** = petit cercle blanc au centre du vaisseau (rayon 4 px). En cas de contact, glow rouge + flash sur la coque + incrementation du compteur Hits.
+- **Graze ring** = anneau a 14 px. Quand un bullet passe entre le hitbox et le graze ring, l'anneau s'illumine en blanc et le compteur Grazes monte.
+
+### Raccourcis clavier
+
+| Action | Touche |
+| --- | --- |
+| Move | fleches / WASD |
+| Focus | Shift |
 | Pause | Espace |
+| Reset stats | R |
+| Supprimer l'emitter selectionne | Suppr / Backspace |
 | Quitter | Echap |
-| Tweak parametres | `Q`/`E` (rate)  `Z`/`C` (speed)  `[`/`]` (count)  `,`/`.` (spread/rot) |
 
-## Patterns inclus (v1)
+## Patterns inclus
 
 - **Spiral** — bras tournants depuis l'emetteur
 - **Ring** — burst circulaire periodique
-- **Fan oscillant** — eventail oscillant vers le bas
-- **Aimed** — vise le joueur en continu, avec dispersion
-
-Chaque pattern expose `params` editables a chaud avec les touches.
+- **Fan oscillant** — eventail oscillant autour d'un angle
+- **Aimed** — vise le joueur en continu
 
 ## Architecture
 
-```
-main.lua          # boucle LÖVE, simulation, input
-conf.lua          # config fenetre
-src/player.lua    # vaisseau (deplacement, hitbox, draw)
-src/patterns.lua  # 4 patterns + helpers spawn/clamp
-src/ui.lua       # HUD : pattern courant, params, controles
-web/              # build love.js
+```text
+main.lua          # boucle LÖVE, simulation, input, layout
+conf.lua          # config fenetre 1280x800
+
+src/
+  player.lua      # vaisseau (deplacement, hitbox, graze ring, flash hit)
+  emitter.lua     # factory : un emitter = { blueprint, x, y, params, accum }
+  patterns.lua    # blueprints : { name, defaultParams, paramSpecs, update }
+  ui.lua         # panneau droit : add patterns, list emitters, sliders, stats
+  widgets.lua    # immediate-mode : button, slider, label
+
+web/              # build love.js (voir web/README.md)
 ```
 
 ## Ajouter un pattern
 
-Dans [src/patterns.lua](src/patterns.lua), suivre le template d'un pattern existant : table avec `name`, `params`, `accum`, fonctions `reset`, `update(dt, time, emitter, bullets)`, `keypressed(key)`, `describe()`. Puis l'ajouter au tableau retourne par `Patterns.list()`.
+Dans [src/patterns.lua](src/patterns.lua), ajoute une entree au tableau `Patterns.blueprints` :
+
+```lua
+{
+    name = "Mon pattern",
+    defaultParams = { rate = 10, speed = 200, ... },
+    paramSpecs = {
+        { name = "rate",  min = 1,  max = 100, step = 1, label = "Rate" },
+        ...
+    },
+    update = function(em, dt, time, bullets, target)
+        -- emit logic, ex: spawn(bullets, em.x, em.y, angle, speed)
+    end,
+}
+```
+
+Les sliders du panneau s'autogenrent depuis `paramSpecs`. `target` est le vaisseau (utile pour viser).
+
+## Roadmap (suggestions)
+
+- **Editeur de patterns custom** : textarea + `loadstring` sandboxe pour ecrire un nouveau `update` a la volee
+- **Save / load** : exporter la scene (emitters + params) en JSON via `love.filesystem`
+- **Plus de patterns** : zigzag, sinusoide, homing, delay-spawn
+- **Color / size par emitter** : sliders couleur HSV et taille bullet
+- **Replay** : rejouer une session pour analyser un pattern

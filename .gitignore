@@ -7,6 +7,9 @@
 # LÖVE / love2d build artefacts
 *.love
 
+# LÖVE app bundle (binaire macOS, ne pas commit)
+love.app/
+
 # Web / love.js / toolchain JS
 node_modules/
 dist/
