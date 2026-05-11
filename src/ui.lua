@@ -9,9 +9,8 @@ local PANEL_W = 400
 local PANEL_PAD = 16
 local AREA_W = 880
 
--- Bornes de la zone scrollable des parametres
-local SCROLL_TOP = 0      -- mise a jour dynamiquement dans draw()
-local SCROLL_BOTTOM = 696
+local SCROLL_TOP = 0
+local SCROLL_BOTTOM = 666     -- bumped up pour faire de la place au toggle clavier
 UI.paramsScroll = 0
 
 local function clampScroll(content, area)
@@ -30,7 +29,6 @@ function UI.wheelmoved(dx, dy)
 end
 
 function UI.draw(state)
-    -- panel background
     love.graphics.setColor(0.08, 0.10, 0.14)
     love.graphics.rectangle("fill", PANEL_X, 0, PANEL_W, 800)
     love.graphics.setColor(0.20, 0.25, 0.32)
@@ -40,7 +38,6 @@ function UI.draw(state)
     local w = PANEL_W - PANEL_PAD * 2
     local y = PANEL_PAD
 
-    -- title
     love.graphics.setColor(0.95, 0.95, 1)
     love.graphics.print("Bullets — pattern editor", x, y)
     y = y + 24
@@ -59,7 +56,7 @@ function UI.draw(state)
 
     y = y + 6
 
-    -------------------------------------------- LISTE EMITTERS (cap 4 visibles)
+    -------------------------------------------- LISTE EMITTERS
     Widgets.label(x, y, "EMITTERS", { 0.55, 0.65, 0.78 })
     y = y + 18
 
@@ -112,7 +109,6 @@ function UI.draw(state)
     local scrollAreaY = y
     local scrollAreaH = SCROLL_BOTTOM - scrollAreaY
 
-    -- on temporairement marque la souris hors zone si elle n'est pas dans la scroll area
     local origMy = state.ui.my
     if state.ui.my < scrollAreaY or state.ui.my > SCROLL_BOTTOM then
         state.ui.my = -10000
@@ -130,7 +126,6 @@ function UI.draw(state)
         local em = state.emitters[state.selectedEmitter]
         love.graphics.setColor(0.85, 0.88, 0.95)
         love.graphics.print(em.blueprint.name, x, sy)
-        -- color preview
         Widgets.colorSwatch(x + w - 60, sy + 2, 60, 14,
             em.params.hue, em.params.rainbow and em.params.rainbow > 0.5)
         sy = sy + 22
@@ -167,7 +162,6 @@ function UI.draw(state)
     love.graphics.setScissor()
     state.ui.my = origMy
 
-    -- scrollbar visuelle
     local maxS = clampScroll(contentHeight, scrollAreaH)
     if maxS > 0 then
         local trackX = PANEL_X + PANEL_W - 6
@@ -180,19 +174,28 @@ function UI.draw(state)
     end
 
     -------------------------------------------- BAS : CONTROLES + STATS
-    local by = SCROLL_BOTTOM + 8
+    local by = SCROLL_BOTTOM + 6
     love.graphics.setColor(0.20, 0.25, 0.32)
     love.graphics.rectangle("fill", PANEL_X + 8, by - 4, PANEL_W - 16, 1)
 
     local pauseLabel = state.paused and "Reprendre" or "Pause"
-    if Widgets.button(state.ui, "pauseBtn", x, by, (w - 8) / 2, 24, pauseLabel) then
+    if Widgets.button(state.ui, "pauseBtn", x, by, (w - 8) / 2, 22, pauseLabel) then
         state.paused = not state.paused
     end
-    if Widgets.button(state.ui, "resetBtn", x + (w + 8) / 2, by, (w - 8) / 2, 24, "Reset stats") then
+    if Widgets.button(state.ui, "resetBtn", x + (w + 8) / 2, by, (w - 8) / 2, 22, "Reset stats") then
         state.requestReset = true
     end
+    by = by + 26
 
-    by = by + 32
+    -- Toggle clavier (AZERTY / QWERTY)
+    local layoutText = (state.keyboardLayout == "azerty")
+        and "Clavier : AZERTY (ZQSD)"
+        or  "Clavier : QWERTY (WASD)"
+    if Widgets.button(state.ui, "layoutBtn", x, by, w, 22, layoutText, { selected = true }) then
+        state.setKeyboardLayout(state.keyboardLayout == "azerty" and "qwerty" or "azerty")
+    end
+    by = by + 26
+
     love.graphics.setColor(0.7, 0.78, 0.90)
     love.graphics.print(string.format("Bullets : %d", #state.bullets), x, by)
     love.graphics.setColor(1, 0.55, 0.55)
@@ -200,9 +203,10 @@ function UI.draw(state)
     love.graphics.setColor(0.85, 0.95, 1)
     love.graphics.print(string.format("Grazes : %d", state.grazeCount), x + 230, by)
 
-    by = by + 18
+    by = by + 16
     love.graphics.setColor(0.50, 0.55, 0.65)
-    love.graphics.print("Move arrows/WASD  Focus Shift  R reset  Space pause", x, by)
+    local moveKeys = (state.keyboardLayout == "azerty") and "ZQSD" or "WASD"
+    love.graphics.print("Move fleches/" .. moveKeys .. "  Focus Shift  R reset  Space pause", x, by)
     by = by + 14
     love.graphics.print("Drag = bouger emitter  Suppr = delete  Molette = scroll", x, by)
 end

@@ -17,6 +17,7 @@ local state = {
     hitCount = 0,
     grazeCount = 0,
     requestReset = false,
+    keyboardLayout = "azerty",   -- "azerty" ou "qwerty"
 
     ui = {
         activeWidget = nil,
@@ -50,11 +51,25 @@ local function findEmitterAt(x, y)
     return nil
 end
 
+function state.setKeyboardLayout(layout)
+    if layout ~= "azerty" and layout ~= "qwerty" then return end
+    state.keyboardLayout = layout
+    pcall(love.filesystem.write, "layout.txt", layout)
+end
+
 function love.load()
     love.graphics.setDefaultFilter("nearest", "nearest")
     state.player = Player.new(AREA_W / 2, AREA_H - 120)
     table.insert(state.emitters, Emitter.new(Patterns.blueprints[1], AREA_W / 2, 200))
     state.selectedEmitter = 1
+
+    -- restore saved layout
+    if love.filesystem.getInfo("layout.txt") then
+        local ok, saved = pcall(love.filesystem.read, "layout.txt")
+        if ok and (saved == "qwerty" or saved == "azerty") then
+            state.keyboardLayout = saved
+        end
+    end
 end
 
 function love.update(dt)
@@ -72,13 +87,12 @@ function love.update(dt)
     if state.paused then return end
 
     state.time = state.time + dt
-    state.player:update(dt, AREA_W, AREA_H)
+    state.player:update(dt, AREA_W, AREA_H, state.keyboardLayout)
 
     for _, em in ipairs(state.emitters) do
         em.blueprint.update(em, dt, state.time, state.bullets, state.player)
     end
 
-    -- Update bullets : position recalculee depuis x0+v*age (+swing perpendiculaire)
     for i = #state.bullets, 1, -1 do
         local b = state.bullets[i]
         b.age = b.age + dt
@@ -95,7 +109,6 @@ function love.update(dt)
         end
     end
 
-    -- collision + graze
     local px, py = state.player.x, state.player.y
     state.player.grazing = false
     for _, b in ipairs(state.bullets) do
@@ -129,7 +142,6 @@ function love.draw()
 
     love.graphics.setScissor(0, 0, AREA_W, AREA_H)
 
-    -- emitters
     for i, em in ipairs(state.emitters) do
         local sel = (state.selectedEmitter == i)
         if sel then
@@ -145,12 +157,10 @@ function love.draw()
         love.graphics.print(string.format("#%d", i), em.x + 14, em.y - 7)
     end
 
-    -- bullets : couleur par bullet (HSV pre-calculee au spawn)
     for _, b in ipairs(state.bullets) do
         love.graphics.setColor(b.color)
         love.graphics.circle("fill", b.x, b.y, b.radius)
     end
-    -- glow
     for _, b in ipairs(state.bullets) do
         love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.35)
         love.graphics.circle("line", b.x, b.y, b.radius + 1.5)

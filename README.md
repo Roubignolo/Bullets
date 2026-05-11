@@ -35,15 +35,19 @@ Fenetre = zone de jeu (gauche) + panneau d'edition (droite).
 
 ### Raccourcis clavier
 
-| Action | Touche |
-| --- | --- |
-| Move | fleches / WASD |
-| Focus | Shift |
-| Pause | Espace |
-| Reset stats | R |
-| Supprimer l'emitter selectionne | Suppr / Backspace |
-| Quitter | Echap |
-| Scroll panneau parametres | Molette |
+Layout par defaut : **AZERTY** (ZQSD). Toggle dans le panneau (en bas, au-dessus des stats) pour passer en **QWERTY** (WASD). Le choix est sauvegarde et persistera au prochain lancement.
+
+Les fleches marchent dans les deux layouts.
+
+| Action | AZERTY | QWERTY |
+| --- | --- | --- |
+| Move | fleches / ZQSD | fleches / WASD |
+| Focus | Shift | Shift |
+| Pause | Espace | Espace |
+| Reset stats | R | R |
+| Supprimer l'emitter selectionne | Suppr / Backspace | Suppr / Backspace |
+| Quitter | Echap | Echap |
+| Scroll panneau parametres | Molette | Molette |
 
 ## Patterns inclus
 
@@ -61,6 +65,7 @@ Fenetre = zone de jeu (gauche) + panneau d'edition (droite).
 ### Couleur
 
 Chaque emitter a 3 params couleur :
+
 - **Hue** (0-360) : teinte de la bullet
 - **Rainbow** (toggle ON/OFF) : si ON, la teinte cycle dans le temps -> les bullets forment un degrade arc-en-ciel continu
 - **Rainbow speed** : vitesse du cycle (cycles / s)

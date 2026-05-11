@@ -1,6 +1,21 @@
 local Player = {}
 Player.__index = Player
 
+local KEYBINDS = {
+    azerty = {
+        up    = { "up",    "z" },
+        down  = { "down",  "s" },
+        left  = { "left",  "q" },
+        right = { "right", "d" },
+    },
+    qwerty = {
+        up    = { "up",    "w" },
+        down  = { "down",  "s" },
+        left  = { "left",  "a" },
+        right = { "right", "d" },
+    },
+}
+
 function Player.new(x, y)
     return setmetatable({
         x = x, y = y,
@@ -12,12 +27,13 @@ function Player.new(x, y)
     }, Player)
 end
 
-function Player:update(dt, areaW, areaH)
+function Player:update(dt, areaW, areaH, layout)
+    local kb = KEYBINDS[layout] or KEYBINDS.azerty
     local dx, dy = 0, 0
-    if love.keyboard.isDown("left", "a") then dx = dx - 1 end
-    if love.keyboard.isDown("right", "d") then dx = dx + 1 end
-    if love.keyboard.isDown("up", "w") then dy = dy - 1 end
-    if love.keyboard.isDown("down", "s") then dy = dy + 1 end
+    if love.keyboard.isDown(kb.left[1],  kb.left[2])  then dx = dx - 1 end
+    if love.keyboard.isDown(kb.right[1], kb.right[2]) then dx = dx + 1 end
+    if love.keyboard.isDown(kb.up[1],    kb.up[2])    then dy = dy - 1 end
+    if love.keyboard.isDown(kb.down[1],  kb.down[2])  then dy = dy + 1 end
 
     local mult = (love.keyboard.isDown("lshift", "rshift")) and 0.4 or 1.0
     if dx ~= 0 or dy ~= 0 then
@@ -40,7 +56,6 @@ end
 function Player:draw()
     local flashing = self.hitFlash > 0
 
-    -- ship body (triangle)
     if flashing then
         love.graphics.setColor(1, 0.35, 0.35)
     else
@@ -56,7 +71,6 @@ function Player:draw()
         self.x - 10, self.y + 8,
         self.x + 10, self.y + 8)
 
-    -- graze ring (visible only when a bullet is near)
     if self.grazing then
         love.graphics.setColor(1, 1, 1, 0.18)
         love.graphics.circle("fill", self.x, self.y, self.grazeRadius)
@@ -67,7 +81,6 @@ function Player:draw()
         love.graphics.circle("line", self.x, self.y, self.grazeRadius)
     end
 
-    -- hitbox: big red glow when hit, otherwise small white core
     if flashing then
         love.graphics.setColor(1, 0.2, 0.2, 0.55)
         love.graphics.circle("fill", self.x, self.y, self.radius + 6)
