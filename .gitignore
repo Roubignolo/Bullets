@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+
+# Lua bytecode
+*.luac
+
+# LÖVE / love2d build artefacts
+*.love
+
+# Web / love.js / toolchain JS
+node_modules/
+dist/
+build/
+*.wasm.map
+
+# IDE / éditeurs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs et temporaires
+*.log
+*.tmp
