@@ -11,6 +11,20 @@ end
 ----------------------------------------------------------------- Button
 function Widgets.button(ui, id, x, y, w, h, label, opts)
     opts = opts or {}
+
+    if opts.disabled then
+        love.graphics.setColor(0.10, 0.12, 0.16)
+        love.graphics.rectangle("fill", x, y, w, h, 4, 4)
+        love.graphics.setColor(0.20, 0.22, 0.28)
+        love.graphics.rectangle("line", x, y, w, h, 4, 4)
+        love.graphics.setColor(0.40, 0.42, 0.48)
+        local font = love.graphics.getFont()
+        local tw = font:getWidth(label)
+        local th = font:getHeight()
+        love.graphics.print(label, x + (w - tw) / 2, y + (h - th) / 2)
+        return false
+    end
+
     local hovered = pointInRect(ui.mx, ui.my, x, y, w, h)
     local active = ui.activeWidget == id
 
@@ -51,8 +65,7 @@ function Widgets.button(ui, id, x, y, w, h, label, opts)
     return clicked
 end
 
------------------------------------------------------------------ Toggle (on/off)
--- value : 0 ou 1. Renvoie la nouvelle valeur (0/1).
+----------------------------------------------------------------- Toggle
 function Widgets.toggle(ui, id, x, y, w, h, label, value)
     local on = value > 0.5
     local btn = label .. " : " .. (on and "ON" or "OFF")
@@ -118,24 +131,25 @@ function Widgets.slider(ui, id, x, y, w, label, value, min, max, step)
     return value
 end
 
------------------------------------------------------------------ Color preview (small swatch)
-function Widgets.colorSwatch(x, y, w, h, hue, rainbow)
+----------------------------------------------------------------- Color preview
+function Widgets.colorSwatch(x, y, w, h, hue, rainbow, sat, val)
+    sat = sat or 1
+    val = val or 1
     if rainbow then
-        -- gradient horizontal arc-en-ciel
         local steps = 28
         local sw = w / steps
         for i = 0, steps - 1 do
             local h_ = i / steps
-            local r, g, b
             local hh = h_ * 6
             local ii = math.floor(hh)
             local f = hh - ii
-            if     ii == 0 then r, g, b = 1, f, 0
-            elseif ii == 1 then r, g, b = 1 - f, 1, 0
-            elseif ii == 2 then r, g, b = 0, 1, f
-            elseif ii == 3 then r, g, b = 0, 1 - f, 1
-            elseif ii == 4 then r, g, b = f, 0, 1
-            else                r, g, b = 1, 0, 1 - f end
+            local r, g, b
+            if     ii == 0 then r, g, b = val, val * f, 0
+            elseif ii == 1 then r, g, b = val * (1 - f), val, 0
+            elseif ii == 2 then r, g, b = 0, val, val * f
+            elseif ii == 3 then r, g, b = 0, val * (1 - f), val
+            elseif ii == 4 then r, g, b = val * f, 0, val
+            else                r, g, b = val, 0, val * (1 - f) end
             love.graphics.setColor(r, g, b, 1)
             love.graphics.rectangle("fill", x + i * sw, y, sw + 1, h)
         end
@@ -143,13 +157,16 @@ function Widgets.colorSwatch(x, y, w, h, hue, rainbow)
         local h_ = ((hue or 0) / 360) % 1 * 6
         local i = math.floor(h_)
         local f = h_ - i
+        local p = val * (1 - sat)
+        local q = val * (1 - f * sat)
+        local t = val * (1 - (1 - f) * sat)
         local r, g, b
-        if     i == 0 then r, g, b = 1, f, 0
-        elseif i == 1 then r, g, b = 1 - f, 1, 0
-        elseif i == 2 then r, g, b = 0, 1, f
-        elseif i == 3 then r, g, b = 0, 1 - f, 1
-        elseif i == 4 then r, g, b = f, 0, 1
-        else               r, g, b = 1, 0, 1 - f end
+        if     i == 0 then r, g, b = val, t, p
+        elseif i == 1 then r, g, b = q, val, p
+        elseif i == 2 then r, g, b = p, val, t
+        elseif i == 3 then r, g, b = p, q, val
+        elseif i == 4 then r, g, b = t, p, val
+        else               r, g, b = val, p, q end
         love.graphics.setColor(r, g, b, 1)
         love.graphics.rectangle("fill", x, y, w, h)
     end

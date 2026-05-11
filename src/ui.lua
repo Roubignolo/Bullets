@@ -1,6 +1,7 @@
 local Widgets = require("src.widgets")
 local Emitter = require("src.emitter")
 local Patterns = require("src.patterns")
+local Scenes = require("src.scenes")
 
 local UI = {}
 
@@ -10,7 +11,7 @@ local PANEL_PAD = 16
 local AREA_W = 880
 
 local SCROLL_TOP = 0
-local SCROLL_BOTTOM = 666     -- bumped up pour faire de la place au toggle clavier
+local SCROLL_BOTTOM = 596    -- bumped up pour faire de la place a SCENES + clavier
 UI.paramsScroll = 0
 
 local function clampScroll(content, area)
@@ -46,15 +47,16 @@ function UI.draw(state)
     Widgets.label(x, y, "PATTERNS  (clic = ajouter)", { 0.55, 0.65, 0.78 })
     y = y + 18
     for i, bp in ipairs(Patterns.blueprints) do
-        if Widgets.button(state.ui, "addBp_" .. i, x, y, w, 22, "+ " .. bp.name) then
+        if Widgets.button(state.ui, "addBp_" .. i, x, y, w, 20, "+ " .. bp.name) then
             local em = Emitter.new(bp, AREA_W / 2, 200)
             table.insert(state.emitters, em)
             state.selectedEmitter = #state.emitters
+            UI.paramsScroll = 0
         end
-        y = y + 25
+        y = y + 22
     end
 
-    y = y + 6
+    y = y + 4
 
     -------------------------------------------- LISTE EMITTERS
     Widgets.label(x, y, "EMITTERS", { 0.55, 0.65, 0.78 })
@@ -65,7 +67,7 @@ function UI.draw(state)
         love.graphics.print("(aucun)", x, y)
         y = y + 22
     else
-        local maxList = 4
+        local maxList = 3
         local n = #state.emitters
         local shown = math.min(n, maxList)
         for i = 1, shown do
@@ -91,7 +93,7 @@ function UI.draw(state)
         end
         if n > maxList then
             love.graphics.setColor(0.55, 0.55, 0.65)
-            love.graphics.print(string.format("... +%d (selectionne dans la zone)", n - maxList), x, y)
+            love.graphics.print(string.format("... +%d (clic dans la zone)", n - maxList), x, y)
             y = y + 16
         end
         if Widgets.button(state.ui, "clearAll", x, y, w, 20, "Tout supprimer",
@@ -99,7 +101,7 @@ function UI.draw(state)
             state.emitters = {}
             state.selectedEmitter = nil
         end
-        y = y + 24
+        y = y + 22
     end
 
     y = y + 4
@@ -127,7 +129,8 @@ function UI.draw(state)
         love.graphics.setColor(0.85, 0.88, 0.95)
         love.graphics.print(em.blueprint.name, x, sy)
         Widgets.colorSwatch(x + w - 60, sy + 2, 60, 14,
-            em.params.hue, em.params.rainbow and em.params.rainbow > 0.5)
+            em.params.hue, em.params.rainbow and em.params.rainbow > 0.5,
+            em.params.saturation, em.params.brightness)
         sy = sy + 22
 
         for _, spec in ipairs(em.blueprint.paramSpecs) do
@@ -135,13 +138,13 @@ function UI.draw(state)
                 em.params[spec.name] = Widgets.toggle(state.ui,
                     "p_" .. em.id .. "_" .. spec.name,
                     x, sy + 4, w, 20, spec.label, em.params[spec.name])
-                sy = sy + 28
+                sy = sy + 26
             else
                 em.params[spec.name] = Widgets.slider(state.ui,
                     "p_" .. em.id .. "_" .. spec.name,
                     x, sy + 16, w, spec.label,
                     em.params[spec.name], spec.min, spec.max, spec.step)
-                sy = sy + 32
+                sy = sy + 30
             end
         end
 
@@ -173,11 +176,35 @@ function UI.draw(state)
         love.graphics.rectangle("fill", trackX, thumbY, 4, thumbH, 2, 2)
     end
 
-    -------------------------------------------- BAS : CONTROLES + STATS
-    local by = SCROLL_BOTTOM + 6
+    -------------------------------------------- BAS : SCENES + CONTROLES + STATS
+    local by = SCROLL_BOTTOM + 4
     love.graphics.setColor(0.20, 0.25, 0.32)
-    love.graphics.rectangle("fill", PANEL_X + 8, by - 4, PANEL_W - 16, 1)
+    love.graphics.rectangle("fill", PANEL_X + 8, by - 2, PANEL_W - 16, 1)
 
+    -- SCENES (3 slots : Save / Load)
+    Widgets.label(x, by + 2, "SCENES", { 0.55, 0.65, 0.78 })
+    by = by + 18
+    local btnW = (w - 8) / 3
+    for slot = 1, 3 do
+        local sx = x + (slot - 1) * (btnW + 4)
+        if Widgets.button(state.ui, "save_" .. slot, sx, by, btnW, 20, "Save " .. slot) then
+            Scenes.save(state, slot)
+        end
+    end
+    by = by + 22
+    for slot = 1, 3 do
+        local sx = x + (slot - 1) * (btnW + 4)
+        local exists = Scenes.exists(slot)
+        if Widgets.button(state.ui, "load_" .. slot, sx, by, btnW, 20, "Load " .. slot,
+                          { disabled = not exists }) then
+            if Scenes.load(state, slot) then
+                UI.paramsScroll = 0
+            end
+        end
+    end
+    by = by + 26
+
+    -- Pause / Reset
     local pauseLabel = state.paused and "Reprendre" or "Pause"
     if Widgets.button(state.ui, "pauseBtn", x, by, (w - 8) / 2, 22, pauseLabel) then
         state.paused = not state.paused
@@ -187,15 +214,16 @@ function UI.draw(state)
     end
     by = by + 26
 
-    -- Toggle clavier (AZERTY / QWERTY)
+    -- Toggle clavier
     local layoutText = (state.keyboardLayout == "azerty")
         and "Clavier : AZERTY (ZQSD)"
         or  "Clavier : QWERTY (WASD)"
-    if Widgets.button(state.ui, "layoutBtn", x, by, w, 22, layoutText, { selected = true }) then
+    if Widgets.button(state.ui, "layoutBtn", x, by, w, 20, layoutText, { selected = true }) then
         state.setKeyboardLayout(state.keyboardLayout == "azerty" and "qwerty" or "azerty")
     end
-    by = by + 26
+    by = by + 22
 
+    -- Stats
     love.graphics.setColor(0.7, 0.78, 0.90)
     love.graphics.print(string.format("Bullets : %d", #state.bullets), x, by)
     love.graphics.setColor(1, 0.55, 0.55)
@@ -203,12 +231,10 @@ function UI.draw(state)
     love.graphics.setColor(0.85, 0.95, 1)
     love.graphics.print(string.format("Grazes : %d", state.grazeCount), x + 230, by)
 
-    by = by + 16
+    by = by + 14
     love.graphics.setColor(0.50, 0.55, 0.65)
     local moveKeys = (state.keyboardLayout == "azerty") and "ZQSD" or "WASD"
-    love.graphics.print("Move fleches/" .. moveKeys .. "  Focus Shift  R reset  Space pause", x, by)
-    by = by + 14
-    love.graphics.print("Drag = bouger emitter  Suppr = delete  Molette = scroll", x, by)
+    love.graphics.print("Move fleches/" .. moveKeys .. "  Shift focus  R reset  Space pause", x, by)
 end
 
 return UI

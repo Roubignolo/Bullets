@@ -61,45 +61,59 @@ Les fleches marchent dans les deux layouts.
 | **Twin Spiral** | Touhou | deux spirales contra-rotatives superposees |
 | **Shotgun** | Cave | bursts a dispersion aleatoire (visee joueur optionnelle) |
 | **Petal** | Touhou | petales tournants emettant un mini-fan chacun |
+| **Curve** | Touhou | bullets qui courbent leur trajectoire en arc continu |
+| **Accel** | Cave / DonPachi | bullets accelerees (vitesse initiale faible, accel forte) |
+| **Homing** | Touhou Marisa | bullets qui steerent doucement vers le joueur |
 
 ### Couleur
 
-Chaque emitter a 3 params couleur :
+Chaque emitter a 5 params couleur :
 
 - **Hue** (0-360) : teinte de la bullet
+- **Saturation** (0-1) : 0 = blanc, 1 = couleur pure
+- **Brightness** (0-1) : 0 = noir, 1 = couleur pleine
 - **Rainbow** (toggle ON/OFF) : si ON, la teinte cycle dans le temps -> les bullets forment un degrade arc-en-ciel continu
 - **Rainbow speed** : vitesse du cycle (cycles / s)
+
+Le swatch de couleur a droite du nom du pattern montre la teinte resultante en temps reel.
+
+### Scenes (save / load)
+
+Section **SCENES** en bas du panneau avec **3 slots** :
+
+- `Save 1/2/3` : ecrase le slot avec la scene actuelle (emitters + leurs positions + leurs params)
+- `Load 1/2/3` : restaure le slot (le bouton est grise tant qu'aucune scene n'a ete sauvegardee dans ce slot)
+
+Stockage : `<save-dir>/scene-N.lua` via `love.filesystem`. Sur web (love.js), persiste en IndexedDB du navigateur, donc survit aux refresh / fermeture d'onglet.
 
 ## Architecture
 
 ```text
-main.lua          # boucle LÖVE, simulation, input, layout
+main.lua          # boucle LÖVE, simulation, input, layout, integration bullets
 conf.lua          # config fenetre 1280x800
 
 src/
-  player.lua      # vaisseau (deplacement, hitbox, graze ring, flash hit)
+  player.lua      # vaisseau (deplacement, hitbox, graze ring, flash hit, AZERTY/QWERTY)
   emitter.lua     # factory : un emitter = { blueprint, x, y, params, accum }
-  patterns.lua    # blueprints + helpers HSV/rainbow + spawn() avec swing optionnel
-  ui.lua          # panneau droit : add patterns, list emitters, params scrollables, stats
-  widgets.lua     # immediate-mode : button, toggle, slider, label, color swatch
+  patterns.lua    # 11 blueprints + helpers HSV/rainbow + spawn() (swing/curve/accel/homing)
+  scenes.lua      # save / load via love.filesystem (Lua serialise dans 3 slots)
+  ui.lua          # panneau droit : add patterns, list emitters, params scrollables, scenes, stats
+  widgets.lua     # immediate-mode : button (+disabled), toggle, slider, label, color swatch
 
 web/              # build love.js (voir web/README.md)
 ```
 
 ## Modele de bullet
 
-Les bullets sont recalculees a chaque frame depuis leur position de spawn :
+4 modes de mouvement, choisis selon les `opts` passees a `spawn()` :
 
-```text
-b.x = b.x0 + b.vx * b.age
-b.y = b.y0 + b.vy * b.age
-if b.swing then
-    b.x += swing.perpX * swing.amp * sin(b.age * swing.freq + swing.phase)
-    b.y += swing.perpY * swing.amp * sin(b.age * swing.freq + swing.phase)
-end
-```
+- **defaut** : position recalculee depuis le spawn (`x0 + vx * age`), pas de drift
+- **swing** : ondulation sinusoidale perpendiculaire (Wave)
+- **accel** : acceleration tangentielle, formule analytique `x0 + dirX * (v*t + 0.5*a*t²)` (Accel)
+- **curve** : rotation continue de l'angle a chaque frame -> bullet en arc (Curve)
+- **homing** : steering vers le joueur, rotation clampee par `homingRate * dt` (Homing)
 
-Pas de drift d'integration. Permet d'ajouter facilement d'autres modificateurs (acceleration, courbure...).
+Curve et Homing utilisent l'integration incrementale (necessaire pour les changements de direction continus). Default/swing/accel restent en formule analytique pour zero drift.
 
 ## Ajouter un pattern
 
@@ -125,7 +139,8 @@ Dans [src/patterns.lua](src/patterns.lua), ajoute une entree au tableau `Pattern
 ## Roadmap
 
 - **Editeur Lua live** : textarea + `loadstring` sandboxe pour ecrire un nouveau `update` a la volee
-- **Save / load** : exporter la scene (emitters + params) en JSON via `love.filesystem`
-- **Patterns supplementaires** : homing, accelerating, spawn-on-death, lasers
-- **Slider saturation/brightness** (actuellement 1.0 fixe)
-- **Multi-selection / copier-coller emitter**
+- **Patterns supplementaires** : spawn-on-death (bullet qui explose en gerbe), lasers, delay-then-accelerate
+- **Multi-selection / copier-coller emitter** + duplicate selected
+- **Plus de slots de save** + nommage des scenes (sauvegarde nominative au lieu de slots numerotes)
+- **Bullet shapes** : carre, fleche, etoile (actuellement tous des cercles)
+- **Mode replay** : enregistrer / rejouer une session pour analyser un pattern

@@ -17,7 +17,7 @@ local state = {
     hitCount = 0,
     grazeCount = 0,
     requestReset = false,
-    keyboardLayout = "azerty",   -- "azerty" ou "qwerty"
+    keyboardLayout = "azerty",
 
     ui = {
         activeWidget = nil,
@@ -63,11 +63,50 @@ function love.load()
     table.insert(state.emitters, Emitter.new(Patterns.blueprints[1], AREA_W / 2, 200))
     state.selectedEmitter = 1
 
-    -- restore saved layout
     if love.filesystem.getInfo("layout.txt") then
         local ok, saved = pcall(love.filesystem.read, "layout.txt")
         if ok and (saved == "qwerty" or saved == "azerty") then
             state.keyboardLayout = saved
+        end
+    end
+end
+
+local function updateBullet(b, dt, target)
+    b.age = b.age + dt
+    b.life = b.life - dt
+
+    if b.homing then
+        if target then
+            local desired = math.atan2(target.y - b.y, target.x - b.x)
+            local diff = desired - b.angle
+            -- normalise dans [-pi, pi]
+            diff = math.atan2(math.sin(diff), math.cos(diff))
+            local maxRot = b.homing.rate * dt
+            if diff > maxRot then diff = maxRot
+            elseif diff < -maxRot then diff = -maxRot end
+            b.angle = b.angle + diff
+            b.vx = math.cos(b.angle) * b.speed
+            b.vy = math.sin(b.angle) * b.speed
+        end
+        b.x = b.x + b.vx * dt
+        b.y = b.y + b.vy * dt
+    elseif b.curve then
+        b.angle = b.angle + b.curve.rate * dt
+        b.vx = math.cos(b.angle) * b.speed
+        b.vy = math.sin(b.angle) * b.speed
+        b.x = b.x + b.vx * dt
+        b.y = b.y + b.vy * dt
+    elseif b.accel then
+        local d = b.speed * b.age + 0.5 * b.accel * b.age * b.age
+        b.x = b.x0 + b.dirX * d
+        b.y = b.y0 + b.dirY * d
+    else
+        b.x = b.x0 + b.vx * b.age
+        b.y = b.y0 + b.vy * b.age
+        if b.swing then
+            local osc = b.swing.amp * math.sin(b.age * b.swing.freq + b.swing.phase)
+            b.x = b.x + b.swing.perpX * osc
+            b.y = b.y + b.swing.perpY * osc
         end
     end
 end
@@ -95,15 +134,7 @@ function love.update(dt)
 
     for i = #state.bullets, 1, -1 do
         local b = state.bullets[i]
-        b.age = b.age + dt
-        b.life = b.life - dt
-        b.x = b.x0 + b.vx * b.age
-        b.y = b.y0 + b.vy * b.age
-        if b.swing then
-            local osc = b.swing.amp * math.sin(b.age * b.swing.freq + b.swing.phase)
-            b.x = b.x + b.swing.perpX * osc
-            b.y = b.y + b.swing.perpY * osc
-        end
+        updateBullet(b, dt, state.player)
         if b.life <= 0 or b.x < -20 or b.x > AREA_W + 20 or b.y < -20 or b.y > AREA_H + 20 then
             table.remove(state.bullets, i)
         end
