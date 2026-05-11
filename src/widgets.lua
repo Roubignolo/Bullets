@@ -25,14 +25,13 @@ function Widgets.button(ui, id, x, y, w, h, label, opts)
         ui.activeWidget = nil
     end
 
-    -- background
     local r, g, b
     if opts.danger then
         if active then r, g, b = 0.55, 0.20, 0.20
         elseif hovered then r, g, b = 0.45, 0.18, 0.18
         else r, g, b = 0.28, 0.12, 0.12 end
     elseif opts.selected then
-        r, g, b = 0.20, 0.40, 0.55
+        r, g, b = 0.20, 0.45, 0.65
     else
         if active then r, g, b = 0.30, 0.40, 0.50
         elseif hovered then r, g, b = 0.22, 0.28, 0.36
@@ -50,6 +49,17 @@ function Widgets.button(ui, id, x, y, w, h, label, opts)
     love.graphics.print(label, x + (w - tw) / 2, y + (h - th) / 2)
 
     return clicked
+end
+
+----------------------------------------------------------------- Toggle (on/off)
+-- value : 0 ou 1. Renvoie la nouvelle valeur (0/1).
+function Widgets.toggle(ui, id, x, y, w, h, label, value)
+    local on = value > 0.5
+    local btn = label .. " : " .. (on and "ON" or "OFF")
+    if Widgets.button(ui, id, x, y, w, h, btn, { selected = on }) then
+        return on and 0 or 1
+    end
+    return value
 end
 
 ----------------------------------------------------------------- Slider
@@ -78,7 +88,6 @@ function Widgets.slider(ui, id, x, y, w, label, value, min, max, step)
         end
     end
 
-    -- label + value above
     setColor(0.85, 0.88, 0.95)
     local valStr
     if step and step >= 1 then
@@ -90,17 +99,14 @@ function Widgets.slider(ui, id, x, y, w, label, value, min, max, step)
     local font = love.graphics.getFont()
     love.graphics.print(valStr, x + w - font:getWidth(valStr), y - 16)
 
-    -- track
     setColor(0.16, 0.18, 0.24)
     love.graphics.rectangle("fill", x, trackY, w, 4, 2, 2)
 
-    -- filled portion
     local span = max - min
     local t = span > 0 and (value - min) / span or 0
     setColor(0.40, 0.62, 0.85)
     love.graphics.rectangle("fill", x, trackY, w * t, 4, 2, 2)
 
-    -- handle
     local hx = x + w * t
     if ui.activeWidget == id then setColor(0.75, 0.88, 1.0)
     elseif hovered then setColor(0.6, 0.78, 0.95)
@@ -110,6 +116,45 @@ function Widgets.slider(ui, id, x, y, w, label, value, min, max, step)
     love.graphics.circle("line", hx, trackY + 2, handleR)
 
     return value
+end
+
+----------------------------------------------------------------- Color preview (small swatch)
+function Widgets.colorSwatch(x, y, w, h, hue, rainbow)
+    if rainbow then
+        -- gradient horizontal arc-en-ciel
+        local steps = 28
+        local sw = w / steps
+        for i = 0, steps - 1 do
+            local h_ = i / steps
+            local r, g, b
+            local hh = h_ * 6
+            local ii = math.floor(hh)
+            local f = hh - ii
+            if     ii == 0 then r, g, b = 1, f, 0
+            elseif ii == 1 then r, g, b = 1 - f, 1, 0
+            elseif ii == 2 then r, g, b = 0, 1, f
+            elseif ii == 3 then r, g, b = 0, 1 - f, 1
+            elseif ii == 4 then r, g, b = f, 0, 1
+            else                r, g, b = 1, 0, 1 - f end
+            love.graphics.setColor(r, g, b, 1)
+            love.graphics.rectangle("fill", x + i * sw, y, sw + 1, h)
+        end
+    else
+        local h_ = ((hue or 0) / 360) % 1 * 6
+        local i = math.floor(h_)
+        local f = h_ - i
+        local r, g, b
+        if     i == 0 then r, g, b = 1, f, 0
+        elseif i == 1 then r, g, b = 1 - f, 1, 0
+        elseif i == 2 then r, g, b = 0, 1, f
+        elseif i == 3 then r, g, b = 0, 1 - f, 1
+        elseif i == 4 then r, g, b = f, 0, 1
+        else               r, g, b = 1, 0, 1 - f end
+        love.graphics.setColor(r, g, b, 1)
+        love.graphics.rectangle("fill", x, y, w, h)
+    end
+    love.graphics.setColor(0.30, 0.36, 0.46)
+    love.graphics.rectangle("line", x, y, w, h)
 end
 
 ----------------------------------------------------------------- Label

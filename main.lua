@@ -53,13 +53,11 @@ end
 function love.load()
     love.graphics.setDefaultFilter("nearest", "nearest")
     state.player = Player.new(AREA_W / 2, AREA_H - 120)
-    -- start with one Spiral so the user sees something immediately
     table.insert(state.emitters, Emitter.new(Patterns.blueprints[1], AREA_W / 2, 200))
     state.selectedEmitter = 1
 end
 
 function love.update(dt)
-    -- update mouse state edges (used by immediate-mode UI)
     state.ui.mx, state.ui.my = love.mouse.getPosition()
     local nowDown = love.mouse.isDown(1)
     state.ui.mousePressed = nowDown and not state.ui.mouseDown
@@ -80,17 +78,24 @@ function love.update(dt)
         em.blueprint.update(em, dt, state.time, state.bullets, state.player)
     end
 
+    -- Update bullets : position recalculee depuis x0+v*age (+swing perpendiculaire)
     for i = #state.bullets, 1, -1 do
         local b = state.bullets[i]
-        b.x = b.x + b.vx * dt
-        b.y = b.y + b.vy * dt
+        b.age = b.age + dt
         b.life = b.life - dt
+        b.x = b.x0 + b.vx * b.age
+        b.y = b.y0 + b.vy * b.age
+        if b.swing then
+            local osc = b.swing.amp * math.sin(b.age * b.swing.freq + b.swing.phase)
+            b.x = b.x + b.swing.perpX * osc
+            b.y = b.y + b.swing.perpY * osc
+        end
         if b.life <= 0 or b.x < -20 or b.x > AREA_W + 20 or b.y < -20 or b.y > AREA_H + 20 then
             table.remove(state.bullets, i)
         end
     end
 
-    -- collision + graze detection
+    -- collision + graze
     local px, py = state.player.x, state.player.y
     state.player.grazing = false
     for _, b in ipairs(state.bullets) do
@@ -115,16 +120,13 @@ function love.update(dt)
 end
 
 function love.draw()
-    -- play area background
     love.graphics.setColor(0.05, 0.06, 0.09)
     love.graphics.rectangle("fill", 0, 0, AREA_W, AREA_H)
 
-    -- subtle grid
     love.graphics.setColor(0.10, 0.12, 0.16)
     for gx = 0, AREA_W, 80 do love.graphics.line(gx, 0, gx, AREA_H) end
     for gy = 0, AREA_H, 80 do love.graphics.line(0, gy, AREA_W, gy) end
 
-    -- restrict drawing to play area so bullets don't bleed onto the panel
     love.graphics.setScissor(0, 0, AREA_W, AREA_H)
 
     -- emitters
@@ -143,14 +145,15 @@ function love.draw()
         love.graphics.print(string.format("#%d", i), em.x + 14, em.y - 7)
     end
 
-    -- bullets
-    love.graphics.setColor(1, 0.45, 0.2)
+    -- bullets : couleur par bullet (HSV pre-calculee au spawn)
     for _, b in ipairs(state.bullets) do
+        love.graphics.setColor(b.color)
         love.graphics.circle("fill", b.x, b.y, b.radius)
     end
-    love.graphics.setColor(1, 0.7, 0.4, 0.4)
+    -- glow
     for _, b in ipairs(state.bullets) do
-        love.graphics.circle("line", b.x, b.y, b.radius + 1)
+        love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.35)
+        love.graphics.circle("line", b.x, b.y, b.radius + 1.5)
     end
 
     state.player:draw()
@@ -184,6 +187,10 @@ end
 
 function love.mousereleased(x, y, button)
     if button == 1 then state.draggingEmitter = nil end
+end
+
+function love.wheelmoved(dx, dy)
+    UI.wheelmoved(dx, dy)
 end
 
 function love.keypressed(key)
