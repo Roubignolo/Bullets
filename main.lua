@@ -2,6 +2,7 @@ local Player = require("src.player")
 local Patterns = require("src.patterns")
 local Emitter = require("src.emitter")
 local UI = require("src.ui")
+local Background = require("src.background")
 
 local AREA_W, AREA_H = 880, 800
 
@@ -18,6 +19,7 @@ local state = {
     grazeCount = 0,
     requestReset = false,
     keyboardLayout = "azerty",
+    showBackground = true,
 
     ui = {
         activeWidget = nil,
@@ -167,12 +169,15 @@ function love.update(dt)
 end
 
 function love.draw()
-    love.graphics.setColor(0.05, 0.06, 0.09)
-    love.graphics.rectangle("fill", 0, 0, AREA_W, AREA_H)
-
-    love.graphics.setColor(0.10, 0.12, 0.16)
-    for gx = 0, AREA_W, 80 do love.graphics.line(gx, 0, gx, AREA_H) end
-    for gy = 0, AREA_H, 80 do love.graphics.line(0, gy, AREA_W, gy) end
+    if state.showBackground then
+        Background.draw(state.time)
+    else
+        love.graphics.setColor(0.05, 0.06, 0.09)
+        love.graphics.rectangle("fill", 0, 0, AREA_W, AREA_H)
+        love.graphics.setColor(0.10, 0.12, 0.16)
+        for gx = 0, AREA_W, 80 do love.graphics.line(gx, 0, gx, AREA_H) end
+        for gy = 0, AREA_H, 80 do love.graphics.line(0, gy, AREA_W, gy) end
+    end
 
     love.graphics.setScissor(0, 0, AREA_W, AREA_H)
 

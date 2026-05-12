@@ -11,7 +11,7 @@ local PANEL_PAD = 16
 local AREA_W = 880
 
 local SCROLL_TOP = 0
-local SCROLL_BOTTOM = 596    -- bumped up pour faire de la place a SCENES + clavier
+local SCROLL_BOTTOM = 574    -- place pour SCENES + clavier + background
 UI.paramsScroll = 0
 
 local function clampScroll(content, area)
@@ -220,6 +220,13 @@ function UI.draw(state)
         or  "Clavier : QWERTY (WASD)"
     if Widgets.button(state.ui, "layoutBtn", x, by, w, 20, layoutText, { selected = true }) then
         state.setKeyboardLayout(state.keyboardLayout == "azerty" and "qwerty" or "azerty")
+    end
+    by = by + 22
+
+    -- Toggle background spatial
+    local bgText = state.showBackground and "Background : Espace ON" or "Background : OFF"
+    if Widgets.button(state.ui, "bgBtn", x, by, w, 20, bgText, { selected = state.showBackground }) then
+        state.showBackground = not state.showBackground
     end
     by = by + 22
 
