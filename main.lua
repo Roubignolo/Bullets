@@ -35,7 +35,10 @@ local function resetSimulation()
     state.player.hitFlash = 0
     state.hitCount = 0
     state.grazeCount = 0
-    for _, em in ipairs(state.emitters) do em.accum = 0 end
+    for _, em in ipairs(state.emitters) do
+        em.accum = 0
+        em.satAccum = 0   -- Evaccaneer (et tout pattern multi-accumulateurs)
+    end
 end
 
 local function inPlayArea(x, y)
@@ -174,6 +177,9 @@ function love.draw()
     love.graphics.setScissor(0, 0, AREA_W, AREA_H)
 
     for i, em in ipairs(state.emitters) do
+        -- rendu specifique au blueprint (ex. satellites Evaccaneer) en couche du fond
+        if em.blueprint.draw then em.blueprint.draw(em) end
+
         local sel = (state.selectedEmitter == i)
         if sel then
             love.graphics.setColor(0.4, 0.7, 1.0, 0.25)

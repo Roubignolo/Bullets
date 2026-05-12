@@ -407,6 +407,101 @@ Patterns.blueprints = {
             end
         end,
     },
+
+    --------------------------------------------- 12. Evaccaneer Doom (Ketsui — boss + satellites)
+    -- Boss central qui tire des rings + N satellites qui orbitent et tirent en aimed.
+    -- Les satellites sont visibles (petits cercles oranges relies au boss).
+    {
+        name = "Evaccaneer",
+        defaultParams = withColorDefaults({
+            ringInterval = 1.5,    -- s entre deux rings du boss
+            ringCount = 20,        -- bullets par ring
+            ringSpeed = 130,
+            satCount = 4,          -- nombre de satellites
+            orbitRadius = 90,
+            orbitSpeed = 0.6,      -- rad/s
+            satRate = 4,           -- tirs/s par satellite
+            satSpeed = 240,
+            satFanCount = 1,       -- bullets par tir de satellite
+            satFanSpread = 0.2,
+            satAimed = 1,          -- 0 = tangentiel a l'orbite, 1 = vise le joueur
+        }, 195),                   -- cyan signature Ketsui
+        paramSpecs = withColorSpecs({
+            { name = "ringInterval", min = 0.2, max = 5,         step = 0.1,  label = "Ring interval (s)" },
+            { name = "ringCount",    min = 4,   max = 48,        step = 1,    label = "Ring bullets" },
+            { name = "ringSpeed",    min = 20,  max = 500,       step = 5,    label = "Ring speed" },
+            { name = "satCount",     min = 0,   max = 8,         step = 1,    label = "Satellites" },
+            { name = "orbitRadius",  min = 30,  max = 200,       step = 5,    label = "Orbit radius" },
+            { name = "orbitSpeed",   min = -3,  max = 3,         step = 0.1,  label = "Orbit speed (rad/s)" },
+            { name = "satRate",      min = 0.5, max = 20,        step = 0.1,  label = "Satellite rate" },
+            { name = "satSpeed",     min = 20,  max = 600,       step = 5,    label = "Satellite speed" },
+            { name = "satFanCount",  min = 1,   max = 8,         step = 1,    label = "Sat. fan count" },
+            { name = "satFanSpread", min = 0,   max = 1,         step = 0.05, label = "Sat. fan spread" },
+            { name = "satAimed",     min = 0,   max = 1,         step = 1,    label = "Sat. vise joueur",  kind = "toggle" },
+        }),
+        update = function(em, dt, time, bullets, target)
+            local pr = em.params
+
+            -- positions des satellites recalculees a chaque frame
+            em.satellites = {}
+            local n = pr.satCount
+            for k = 0, n - 1 do
+                local a = time * pr.orbitSpeed + (k * math.pi * 2 / n)
+                em.satellites[k + 1] = {
+                    x = em.x + math.cos(a) * pr.orbitRadius,
+                    y = em.y + math.sin(a) * pr.orbitRadius,
+                    angle = a,
+                }
+            end
+
+            -- ring central du boss
+            em.accum = em.accum + dt
+            if em.accum >= pr.ringInterval then
+                em.accum = em.accum - pr.ringInterval
+                for k = 0, pr.ringCount - 1 do
+                    local a = (k / pr.ringCount) * math.pi * 2
+                    spawn(em, bullets, em.x, em.y, a, pr.ringSpeed, time)
+                end
+            end
+
+            -- tir des satellites (chacun fait son intervalle)
+            em.satAccum = (em.satAccum or 0) + dt
+            local satInterval = 1 / pr.satRate
+            while em.satAccum >= satInterval do
+                em.satAccum = em.satAccum - satInterval
+                for _, sat in ipairs(em.satellites) do
+                    local center
+                    if pr.satAimed > 0.5 and target then
+                        center = math.atan2(target.y - sat.y, target.x - sat.x)
+                    else
+                        -- tangentiel a l'orbite (perpendiculaire au rayon)
+                        center = sat.angle + math.pi / 2
+                    end
+                    local nf = pr.satFanCount
+                    for j = 0, nf - 1 do
+                        local t = (nf == 1) and 0.5 or (j / (nf - 1))
+                        local a = center + (t - 0.5) * pr.satFanSpread
+                        spawn(em, bullets, sat.x, sat.y, a, pr.satSpeed, time)
+                    end
+                end
+            end
+        end,
+
+        -- rendu des satellites (appele par main.lua si la fonction existe)
+        draw = function(em)
+            if not em.satellites or #em.satellites == 0 then return end
+            for _, sat in ipairs(em.satellites) do
+                love.graphics.setColor(1, 0.55, 0.15, 0.18)
+                love.graphics.line(em.x, em.y, sat.x, sat.y)
+                love.graphics.setColor(1, 0.65, 0.20, 0.30)
+                love.graphics.circle("fill", sat.x, sat.y, 9)
+                love.graphics.setColor(1, 0.75, 0.30, 1.0)
+                love.graphics.circle("fill", sat.x, sat.y, 5)
+                love.graphics.setColor(1, 0.85, 0.50, 0.85)
+                love.graphics.circle("line", sat.x, sat.y, 9)
+            end
+        end,
+    },
 }
 
 return Patterns

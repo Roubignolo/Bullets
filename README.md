@@ -64,6 +64,7 @@ Les fleches marchent dans les deux layouts.
 | **Curve** | Touhou | bullets qui courbent leur trajectoire en arc continu |
 | **Accel** | Cave / DonPachi | bullets accelerees (vitesse initiale faible, accel forte) |
 | **Homing** | Touhou Marisa | bullets qui steerent doucement vers le joueur |
+| **Evaccaneer** | Ketsui (Cave) | boss + N satellites orbitants visibles, chacun visant le joueur |
 
 ### Couleur
 
