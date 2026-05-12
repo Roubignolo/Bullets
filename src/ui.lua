@@ -21,8 +21,8 @@ local function clampScroll(content, area)
     return maxS
 end
 
-function UI.wheelmoved(dx, dy)
-    local mx, my = love.mouse.getPosition()
+function UI.wheelmoved(state, dx, dy)
+    local mx, my = state.ui.mx, state.ui.my
     if mx >= PANEL_X and mx <= PANEL_X + PANEL_W
        and my >= SCROLL_TOP and my <= SCROLL_BOTTOM then
         UI.paramsScroll = UI.paramsScroll - dy * 28
@@ -223,10 +223,15 @@ function UI.draw(state)
     end
     by = by + 22
 
-    -- Toggle background spatial
-    local bgText = state.showBackground and "Background : Espace ON" or "Background : OFF"
-    if Widgets.button(state.ui, "bgBtn", x, by, w, 20, bgText, { selected = state.showBackground }) then
+    -- Background spatial + Plein ecran (demi-largeur)
+    local halfW = (w - 8) / 2
+    local bgText = state.showBackground and "BG : ON" or "BG : OFF"
+    if Widgets.button(state.ui, "bgBtn", x, by, halfW, 20, bgText, { selected = state.showBackground }) then
         state.showBackground = not state.showBackground
+    end
+    local fsText = state.fullscreen and "Plein ecran : ON" or "Plein ecran : OFF"
+    if Widgets.button(state.ui, "fsBtn", x + halfW + 8, by, halfW, 20, fsText, { selected = state.fullscreen }) then
+        state.toggleFullscreen()
     end
     by = by + 22
 
@@ -241,7 +246,7 @@ function UI.draw(state)
     by = by + 14
     love.graphics.setColor(0.50, 0.55, 0.65)
     local moveKeys = (state.keyboardLayout == "azerty") and "ZQSD" or "WASD"
-    love.graphics.print("Move fleches/" .. moveKeys .. "  Shift focus  R reset  Space pause", x, by)
+    love.graphics.print("Move fleches/" .. moveKeys .. "  Shift focus  R reset  Space pause  F11 fullscreen", x, by)
 end
 
 return UI

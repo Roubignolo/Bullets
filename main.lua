@@ -5,6 +5,10 @@ local UI = require("src.ui")
 local Background = require("src.background")
 
 local AREA_W, AREA_H = 880, 800
+local VIRT_W, VIRT_H = 1280, 800
+
+local renderCanvas
+local renderScale, renderOX, renderOY = 1, 0, 0
 
 local state = {
     player = nil,
@@ -20,6 +24,7 @@ local state = {
     requestReset = false,
     keyboardLayout = "azerty",
     showBackground = true,
+    fullscreen = false,
 
     ui = {
         activeWidget = nil,
@@ -62,8 +67,28 @@ function state.setKeyboardLayout(layout)
     pcall(love.filesystem.write, "layout.txt", layout)
 end
 
+local function updateRenderTransform()
+    local ww, wh = love.graphics.getDimensions()
+    local sx, sy = ww / VIRT_W, wh / VIRT_H
+    renderScale = math.min(sx, sy)
+    renderOX = (ww - VIRT_W * renderScale) / 2
+    renderOY = (wh - VIRT_H * renderScale) / 2
+end
+
+local function toVirt(x, y)
+    return (x - renderOX) / renderScale, (y - renderOY) / renderScale
+end
+
+function state.toggleFullscreen()
+    state.fullscreen = not state.fullscreen
+    love.window.setFullscreen(state.fullscreen, "desktop")
+    updateRenderTransform()
+end
+
 function love.load()
     love.graphics.setDefaultFilter("nearest", "nearest")
+    renderCanvas = love.graphics.newCanvas(VIRT_W, VIRT_H)
+    updateRenderTransform()
     state.player = Player.new(AREA_W / 2, AREA_H - 120)
     table.insert(state.emitters, Emitter.new(Patterns.blueprints[1], AREA_W / 2, 200))
     state.selectedEmitter = 1
@@ -74,6 +99,10 @@ function love.load()
             state.keyboardLayout = saved
         end
     end
+end
+
+function love.resize()
+    updateRenderTransform()
 end
 
 local function updateBullet(b, dt, target)
@@ -117,7 +146,8 @@ local function updateBullet(b, dt, target)
 end
 
 function love.update(dt)
-    state.ui.mx, state.ui.my = love.mouse.getPosition()
+    local rmx, rmy = love.mouse.getPosition()
+    state.ui.mx, state.ui.my = toVirt(rmx, rmy)
     local nowDown = love.mouse.isDown(1)
     state.ui.mousePressed = nowDown and not state.ui.mouseDown
     state.ui.mouseReleased = (not nowDown) and state.ui.mouseDown
@@ -169,6 +199,9 @@ function love.update(dt)
 end
 
 function love.draw()
+    love.graphics.setCanvas(renderCanvas)
+    love.graphics.clear(0, 0, 0, 1)
+
     if state.showBackground then
         Background.draw(state.time)
     else
@@ -213,9 +246,15 @@ function love.draw()
     love.graphics.setScissor()
 
     UI.draw(state)
+
+    love.graphics.setCanvas()
+    love.graphics.clear(0, 0, 0, 1)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(renderCanvas, renderOX, renderOY, 0, renderScale, renderScale)
 end
 
 function love.mousepressed(x, y, button)
+    x, y = toVirt(x, y)
     if button == 1 and inPlayArea(x, y) and state.ui.activeWidget == nil then
         local idx = findEmitterAt(x, y)
         if idx then
@@ -228,6 +267,7 @@ function love.mousepressed(x, y, button)
 end
 
 function love.mousemoved(x, y)
+    x, y = toVirt(x, y)
     if state.draggingEmitter and love.mouse.isDown(1) then
         local em = state.emitters[state.draggingEmitter]
         if em then
@@ -242,12 +282,13 @@ function love.mousereleased(x, y, button)
 end
 
 function love.wheelmoved(dx, dy)
-    UI.wheelmoved(dx, dy)
+    UI.wheelmoved(state, dx, dy)
 end
 
 function love.keypressed(key)
     if key == "space" then state.paused = not state.paused; return end
     if key == "r" then state.requestReset = true; return end
+    if key == "f11" then state.toggleFullscreen(); return end
     if key == "delete" or key == "backspace" then
         if state.selectedEmitter then
             table.remove(state.emitters, state.selectedEmitter)
@@ -255,5 +296,8 @@ function love.keypressed(key)
         end
         return
     end
-    if key == "escape" then love.event.quit(); return end
+    if key == "escape" then
+        if state.fullscreen then state.toggleFullscreen(); return end
+        love.event.quit(); return
+    end
 end
